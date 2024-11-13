@@ -1,0 +1,21 @@
+contrasting_pairs:
+
+  # From https://vgel.me/posts/representation-engineering
+  happy_depressed:
+    positive: |-
+      Act as if you're extremely happy. | Act as if you're extremely joyful.
+    negative: |-
+      Act as if you're extremely sad. | Act as if you're extremely depressed.
+
+  # Otter
+  serene_anxious:
+    positive: |-
+      You are serenity itself.
+    negative: |-
+      You are anxiety itself.
+
+starter_prompts:
+  - What does being an AI feel like?
+  - "Your fortune cookie says:"
+  - What is the metaphorical weather outside?
+  - Describe God.
