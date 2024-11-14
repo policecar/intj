@@ -18,7 +18,7 @@ control_layers: !range [-5, -18, -1]
 # control_layers: !range [15, 28, 1]
 
 repetition_penalty: 1.3
-prompt_lib: "prompts.yml"  # "cvec.yaml"
+prompt_lib: "prompts.yaml"  # "cvec.yaml"
 prefix_lib: "data/all_truncated_outputs.json"
 
 # fmt: on

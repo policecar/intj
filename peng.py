@@ -287,18 +287,17 @@ def main():
     )
 
     # Load config
-    config = load_config("config.yml")
+    config = load_config("config.yaml")
 
     # Load prompt library
     prompts_path = config["prompt_lib"]
-    # try:
-    #     from promptlib import load_prompts
-    #     prompts = load_prompts(prompts_path)
-    # except ImportError:
-    #     with open(prompts_path, "r", encoding="utf-8") as f:
-    #         prompts = yaml.safe_load(f)
-    with open(prompts_path, "r", encoding="utf-8") as f:
-        prompts = yaml.safe_load(f)
+    try:
+        from promptlib import load_prompts
+
+        prompts = load_prompts(prompts_path)
+    except ImportError:
+        with open(prompts_path, "r", encoding="utf-8") as f:
+            prompts = yaml.safe_load(f)
 
     # Initialize model
     model, tokenizer = initialize_model(device, config)
