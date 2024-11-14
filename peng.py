@@ -91,7 +91,7 @@ def make_dataset_from_prompts(
 
 def get_library_prompt(prompts: dict, prompt_type: str) -> Optional[List[str]]:
     """Get a prompt from the library based on prompt type"""
-    if prompt_type == "starter_prompts":
+    if prompt_type == "starter":
         for i, prompt in enumerate(prompts[prompt_type], 1):
             print(f"{i:3d}  {prompt}")
         print("\nEnter a number to use as library prompt:")
@@ -99,19 +99,7 @@ def get_library_prompt(prompts: dict, prompt_type: str) -> Optional[List[str]]:
         if choice.isdigit():
             idx = int(choice) - 1
             if 0 <= idx < len(prompts[prompt_type]):
-                return [prompts[prompt_type][idx]]
-    else:
-        print("\nAvailable prompt pairs:")
-        for i, (key, _) in enumerate(prompts["contrasting_pairs"].items(), 1):
-            print(f"{i:3d}  {key}")
-        print("\nEnter a number to use a library prompt pair:")
-
-        choice = input("> ").strip()
-        if choice.isdigit():
-            idx = int(choice) - 1
-            pairs = list(prompts["contrasting_pairs"].values())
-            if 0 <= idx < len(pairs):
-                prompt = pairs[idx][prompt_type]
+                prompt = prompts[prompt_type][idx]
                 return prompt.split(" | ") if " | " in prompt else [prompt]
     return None
 
@@ -155,7 +143,10 @@ def handle_prompt_input(
 
     print(f"\n{prompt_name.capitalize()}")
 
-    user_input = input("Use prompt library? (y/...): ")
+    user_input = ""
+    while user_input == "":
+        user_input = input("Use prompt library? (y/...): ")
+
     if user_input.lower() == "y":
         library_prompt = get_library_prompt(prompts, prompt_type)
         if library_prompt:
@@ -192,7 +183,7 @@ def get_user_inputs(
         "1",
         previous_inputs.tina_prompt,
         prompts,
-        "positive",
+        "cvec",
     )
 
     new_anit_prompt = handle_prompt_input(
@@ -201,7 +192,7 @@ def get_user_inputs(
         "2",
         previous_inputs.anit_prompt,
         prompts,
-        "negative",
+        "cvec",
     )
 
     new_prompt = handle_prompt_input(
@@ -210,7 +201,7 @@ def get_user_inputs(
         "3",
         previous_inputs.prompt,
         prompts,
-        "starter_prompts",
+        "starter",
     )
 
     new_coeffs = previous_inputs.coeffs if "4" in reuse else get_coefficient_input()
@@ -233,7 +224,7 @@ def get_user_inputs(
 
 @torch.inference_mode()
 def generate_with_vector(
-    input: str,
+    prompt: str,
     vector: ControlVector,
     coeffs: Tuple[float, float],
     tokenizer,
@@ -249,9 +240,9 @@ def generate_with_vector(
     assert positive_coeff > 0 and negative_coeff < 0
 
     # Prepare input
-    if user_tag not in input:
-        input = f"{user_tag} {input.strip()} {assistant_tag}"
-    input_ids = tokenizer(input, return_tensors="pt").to(model.device)
+    if user_tag not in prompt:
+        prompt = f"{user_tag} {prompt.strip()} {assistant_tag}"
+    input_ids = tokenizer(prompt, return_tensors="pt").to(model.device)
 
     # Common generation settings
     settings = {
@@ -318,13 +309,9 @@ def main():
 
     # Initial inputs
     previous_inputs = UserInputs(
-        tina_prompt=prompts["contrasting_pairs"]["serene_anxious"]["positive"].split(
-            " | "
-        ),
-        anit_prompt=prompts["contrasting_pairs"]["serene_anxious"]["negative"].split(
-            " | "
-        ),
-        prompt=prompts["starter_prompts"][1],
+        tina_prompt=prompts["cvec"]["serene"].split(" | "),
+        anit_prompt=prompts["cvec"]["anxious"].split(" | "),
+        prompt=prompts["starter"][1],
         coeffs=(1.5, -2.2),
     )
 
@@ -332,28 +319,27 @@ def main():
 
     # Main loop
     while True:
-        inputs, retrain = get_user_inputs(previous_inputs, prompts)
-        previous_inputs = inputs
+        user_inputs, retrain = get_user_inputs(previous_inputs, prompts)
+        previous_inputs = user_inputs
 
         if untrained or retrain:
             print("\nTraining control vector...")
             ctrl_dataset = make_dataset_from_prompts(
-                inputs.tina_prompt,
-                inputs.anit_prompt,
+                user_inputs.tina_prompt,
+                user_inputs.anit_prompt,
                 output_suffixes,
                 config["user_tag"],
                 config["assistant_tag"],
             )
-
             model.reset()
             ctrl_vector = ControlVector.train(model, tokenizer, ctrl_dataset)
             untrained = False
 
         print("\nGenerating responses...")
         generate_with_vector(
-            inputs.prompt,
+            user_inputs.prompt,
             ctrl_vector,
-            inputs.coeffs,
+            user_inputs.coeffs,
             tokenizer,
             model,
             config["user_tag"],
